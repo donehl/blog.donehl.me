@@ -11,42 +11,23 @@ var uuid = function() {
 var Card = function(opt_data) {
   this.fields = [];
   this.values = [];
+  this.element = $("<div>", { contentEditable: "true", class: "card panel panel-default" });
 
   if(opt_data) {
     this.uuid = opt_data.uuid;
     this.expanded = opt_data.expanded;
     if(this.expanded) {
       this.cardName = opt_data.cardName;
-      this.element = $("<div>", { contentEditable: "false", class: "card", text: "expanded card: " + opt_data.cardName });
-      for(var i = 0; i < opt_data.fields.length; i++) {
-        var cardData = data.load(opt_data.values[i].uuid);
-        var valueCard = new Card(cardData);
-
-        var fieldElement = $("<div>", { class: "field", text: opt_data.fields[i], contentEditable: "true" });
-        var valueElement = $("<div>", { class: "value" });
-        valueElement.append(valueCard.element);
-        this.element.append(fieldElement);
-        this.element.append(valueElement);
-
-        this.fields.push(fieldElement);
-        this.values.push(valueCard);
-
-        var card = this;
-        fieldElement.on("paste cut drop keypress input textInput", function(event) {
-          data.save(card);
-        });
-      }
+      this.element.attr("contentEditable", "false");
+      this.element.append($("<div>", { class: "panel-heading", text: "expanded card: " + opt_data.cardName }));
+      this.generateList(opt_data.fields, opt_data.values);
     } else {
-      this.element = $("<div>", { contentEditable: "true", class: "card", text: opt_data.content });
-      this.cardName = null;
+      this.element.html(opt_data.content);
     }
   } else {
     this.uuid = uuid();
-    this.element = $("<div>", { contentEditable: "true", class: "card", text: "new card" });
     this.expanded = false;
-    this.fields = [];
-    this.values = [];
-    this.cardName = null;
+    this.element.html("new card");
     data.save(this);
   }
 
@@ -54,9 +35,32 @@ var Card = function(opt_data) {
   this.element.on("paste cut drop keypress input textInput", $.proxy(this.onValueChange, this));
 };
 
+Card.prototype.generateList = function(fields, opt_values) {
+  var listElement = $("<dl>", { class: "dl-horizontal card-content" });
+  for(var i = 0; i < fields.length; i++) {
+    var valueCard = new Card(opt_values && data.load(opt_values[i].uuid));
+
+    var fieldElement = $("<dt>", { class: "field", text: fields[i], contentEditable: "true" });
+    var valueElement = $("<dd>", { class: "value" });
+    valueElement.append(valueCard.element);
+    listElement.append(fieldElement);
+    listElement.append(valueElement);
+
+    this.fields.push(fieldElement);
+    this.values.push(valueCard);
+
+    var card = this;
+    fieldElement.on("paste cut drop keypress input textInput", function(event) {
+      data.save(card);
+    });
+  }
+  this.element.append(listElement);
+}
+
 Card.prototype.onKeyPress = function(event) {
   if(event.which == 13 && this.canExpand()) {
     this.expand();
+    data.save(this);
     event.preventDefault();
   }
 };
@@ -83,23 +87,11 @@ Card.prototype.expand = function() {
   card.cardName = card.getCardNameFromContent();
   element.attr("contentEditable", "false");
   element.empty();
-  element.append($("<div>", {  class: "card-caption", text: "expanded card: " + card.cardName }));
+  element.append($("<div>", { class: "card-caption" }));
+  element.append($("<div>", { class: "panel-heading", text: "expanded card: " + card.cardName }));
 
   var fields = this.getFieldSuggestions();
-  $.each(fields, function(index, field) {
-    var fieldElement = $("<div>", { class: "field", text: field, contentEditable: "true" });
-    var valueElement = $("<div>", { class: "value" });
-    var valueCard = new Card();
-    valueElement.append(valueCard.element);
-    element.append(fieldElement);
-    element.append(valueElement);
-    card.fields.push(fieldElement);
-    card.values.push(valueCard);
-
-    fieldElement.on("paste cut drop keypress input textInput", function(event) {
-      data.save(card);
-    });
-  });
+  this.generateList(fields);
 };
 
 Card.prototype.getData = function() {
