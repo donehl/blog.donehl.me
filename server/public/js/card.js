@@ -33,15 +33,21 @@ var Card = function(opt_uuid) {
     this.expanded = false;
     this.element.attr("contentEditable", "true");
     this.element.html("new card");
-    data.save(this);
+    this.save();
   }
   
   this.element.on("keypress", $.proxy(this.onKeyPress, this));
-  this.element.on("paste cut drop keypress input textInput", $.proxy(this.onValueChange, this));
+  this.element.on("paste cut drop input", $.proxy(this.onValueChange, this));
 };
 
 Card.prototype.generateList = function(cardName, fields, opt_values) {
+  var card = this;
   this.element.empty();
+  var closeElement = $("<span>", { class: "close", html: "&times;" });
+  closeElement.on("click", function(event) {
+    card.element.remove();
+  });
+  this.element.append(closeElement);
   this.element.append($("<div>", { class: "panel-heading", text: cardName }));
   var listElement = $("<dl>", { class: "dl-horizontal card-content" });
   for(var i = 0; i < fields.length; i++) {
@@ -57,8 +63,8 @@ Card.prototype.generateList = function(cardName, fields, opt_values) {
     this.values.push(valueCard);
 
     var card = this;
-    fieldElement.on("paste cut drop keypress input textInput", function(event) {
-      data.save(card);
+    fieldElement.on("paste cut drop input", function(event) {
+      card.save();
     });
   }
   this.element.append(listElement);
@@ -67,16 +73,20 @@ Card.prototype.generateList = function(cardName, fields, opt_values) {
 Card.prototype.onKeyPress = function(event) {
   if(event.which == 13 && this.canExpand()) {
     this.expand();
-    data.save(this);
+    this.save();
     event.preventDefault();
   }
 };
 
 Card.prototype.onValueChange = function(event) {
   if(!this.expanded) {
-    data.save(this);
+    this.save();
   }
 };
+
+Card.prototype.save = function() {
+  data.save(this);
+}
 
 Card.prototype.getCardNameFromContent = function() {
   var matchArray = this.element.text().match(/^~(\w+)$/);

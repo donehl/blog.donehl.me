@@ -3,11 +3,29 @@ var data = {};
 data.storage = {};
 
 data.storage.setItem = function(key, value) {
-  window.localStorage.setItem(key, JSON.stringify(value));
+  $.ajax({
+    type: "POST",
+    url: "/data/setItem",
+    dataType: "html",
+    data: { "key": key, "value": JSON.stringify(value) }
+  }).done(function(msg) {
+    console.log("Set: " + msg);
+  });
 }
 
 data.storage.getItem = function(key, callback) {
-  callback(JSON.parse(window.localStorage.getItem(key)));
+  $.ajax({
+    type: "GET",
+    url: "/data/getItem",
+    dataType: "json",
+    data: { "key": key }
+  }).done(function(msg) {
+    console.log("Get: " + msg);
+    callback(JSON.parse(msg["value"]));
+  }).fail(function() {
+    console.log("Get Error");
+    callback(null);
+  });
 }
 
 data.save = function(card) {
