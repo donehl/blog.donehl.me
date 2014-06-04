@@ -8,24 +8,30 @@ var uuid = function() {
   return uuid;
 };
 
-var Card = function(opt_data) {
+var Card = function(opt_uuid) {
   this.fields = [];
   this.values = [];
-  this.element = $("<div>", { contentEditable: "true", class: "card panel panel-default" });
+  this.element = $("<div>", { contentEditable: "false", class: "card panel panel-default" });
+  this.expanded = false;
+  this.element.html("loading...");
 
-  if(opt_data) {
-    this.uuid = opt_data.uuid;
-    this.expanded = opt_data.expanded;
-    if(this.expanded) {
-      this.element.attr("contentEditable", "false");
-      this.cardName = opt_data.cardName;
-      this.generateList(opt_data.cardName, opt_data.fields, opt_data.values);
-    } else {
-      this.element.html(opt_data.content);
-    }
+  if(opt_uuid) {
+    var card = this;
+    card.uuid = opt_uuid;
+    data.load(card.uuid, function(data) {
+      card.expanded = data.expanded;
+      if(card.expanded) {
+        card.cardName = data.cardName;
+        card.generateList(data.cardName, data.fields, data.values);
+      } else {
+        card.element.attr("contentEditable", "true");
+        card.element.html(data.content);
+      }
+    });
   } else {
     this.uuid = uuid();
     this.expanded = false;
+    this.element.attr("contentEditable", "true");
     this.element.html("new card");
     data.save(this);
   }
@@ -35,10 +41,11 @@ var Card = function(opt_data) {
 };
 
 Card.prototype.generateList = function(cardName, fields, opt_values) {
+  this.element.empty();
   this.element.append($("<div>", { class: "panel-heading", text: cardName }));
   var listElement = $("<dl>", { class: "dl-horizontal card-content" });
   for(var i = 0; i < fields.length; i++) {
-    var valueCard = new Card(opt_values && data.load(opt_values[i].uuid));
+    var valueCard = new Card(opt_values && opt_values[i].uuid);
 
     var fieldElement = $("<dt>", { class: "field", text: fields[i], contentEditable: "true" });
     var valueElement = $("<dd>", { class: "value" });
@@ -113,19 +120,21 @@ Card.prototype.getData = function() {
 };
 
 $(document).ready(function() {
-  console.log(data.list());
+  data.getList(function(list) {
+    list = list || [];
+    $.each(list, function(index, uuid) {
+      var newCard = new Card(uuid);
+      $("#cards").append(newCard.element);
+    });
 
-  $.each(data.list(), function(index, uuid) {
-    var cardData = data.load(uuid)
-    var newCard = new Card(cardData);
-    $("#cards").append(newCard.element);
+    $("#add-card-button").on("click", function(event) {
+      var newCard = new Card();
+      list.push(newCard.uuid);
+      data.setList(list);
+      $("#cards").append(newCard.element);
+    });
   });
 
-  $("#add-card-button").on("click", function(event) {
-    var newCard = new Card();
-    data.list(newCard.uuid);
-    $("#cards").append(newCard.element);
-  });
 });
 
 // Testing methods.
